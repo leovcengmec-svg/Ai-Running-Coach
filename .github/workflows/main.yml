@@ -1,0 +1,55 @@
+name: AI Running Coach
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract AI Running Coach ZIP
+        run: |
+          rm -rf extracted
+          mkdir -p extracted
+          unzip -q AI-Running-Coach.zip -d extracted
+          test -d extracted/AI-Running-Coach/android
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager "platform-tools" "platforms;android-37" "build-tools;35.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.6"
+
+      - name: Build Debug APK
+        working-directory: extracted/AI-Running-Coach/android
+        run: |
+          gradle :app:assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI-Running-Coach-debug-apk
+          path: extracted/AI-Running-Coach/android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
