@@ -34,16 +34,13 @@ jobs:
           ZIP_FILE="$(find . -maxdepth 1 -type f -iname '*.zip' | head -n 1)"
 
           if [ -z "$ZIP_FILE" ]; then
-            echo "ERRO: nenhum arquivo ZIP foi encontrado na raiz do repositorio."
+            echo "ERRO: nenhum arquivo ZIP foi encontrado."
             exit 1
           fi
 
           echo "ZIP encontrado: $ZIP_FILE"
 
           unzip -q "$ZIP_FILE" -d extracted
-
-          echo "Conteudo extraido:"
-          find extracted -maxdepth 3 -type f | head -100
 
       - name: Locate Android project
         shell: bash
@@ -53,7 +50,7 @@ jobs:
           SETTINGS_FILE="$(find extracted -type f \( -name 'settings.gradle.kts' -o -name 'settings.gradle' \) | head -n 1)"
 
           if [ -z "$SETTINGS_FILE" ]; then
-            echo "ERRO: settings.gradle.kts ou settings.gradle nao encontrado."
+            echo "ERRO: projeto Android nao encontrado."
             exit 1
           fi
 
@@ -61,7 +58,7 @@ jobs:
 
           echo "ANDROID_DIR=$ANDROID_DIR" >> "$GITHUB_ENV"
 
-          echo "Projeto Android encontrado em:"
+          echo "Projeto Android:"
           echo "$ANDROID_DIR"
 
       - name: Configure Android SDK
@@ -71,9 +68,34 @@ jobs:
 
           echo "ANDROID_HOME=$ANDROID_HOME"
 
-          yes | sdkmanager --licenses > /dev/null || true
+          SDKMANAGER=""
 
-          sdkmanager \
+          if [ -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
+            SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          elif [ -x "$ANDROID_HOME/cmdline-tools/bin/sdkmanager" ]; then
+            SDKMANAGER="$ANDROID_HOME/cmdline-tools/bin/sdkmanager"
+          else
+            SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager 2>/dev/null | head -n 1)"
+          fi
+
+          if [ -z "$SDKMANAGER" ]; then
+            echo "ERRO: sdkmanager nao encontrado."
+            echo "Conteudo do Android SDK:"
+            find "$ANDROID_HOME" -maxdepth 4 -type f -name sdkmanager 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "sdkmanager encontrado:"
+          echo "$SDKMANAGER"
+
+          SDK_DIR="$(dirname "$(dirname "$(dirname "$SDKMANAGER")")")"
+
+          echo "$SDK_DIR/platform-tools" >> "$GITHUB_PATH"
+          echo "$(dirname "$SDKMANAGER")" >> "$GITHUB_PATH"
+
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+
+          "$SDKMANAGER" \
             "platform-tools" \
             "platforms;android-35" \
             "build-tools;35.0.0"
@@ -88,12 +110,6 @@ jobs:
         run: |
           gradle :app:assembleDebug --no-daemon
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: AI-Running-Coach-debug-apk
-          path: ${{ env.ANDROID_DIR }}/app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
