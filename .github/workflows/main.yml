@@ -17,12 +17,46 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Extract AI Running Coach ZIP
+      - name: Find and extract AI Running Coach ZIP
+        shell: bash
         run: |
+          set -e
+
           rm -rf extracted
           mkdir -p extracted
-          unzip -q AI-Running-Coach.zip -d extracted
-          test -d extracted/AI-Running-Coach/android
+
+          ZIP_FILE="$(find . -maxdepth 1 -type f -iname '*.zip' | head -n 1)"
+
+          if [ -z "$ZIP_FILE" ]; then
+            echo "ERRO: nenhum arquivo ZIP foi encontrado na raiz do repositorio."
+            exit 1
+          fi
+
+          echo "ZIP encontrado: $ZIP_FILE"
+
+          unzip -q "$ZIP_FILE" -d extracted
+
+          echo "Conteudo extraido:"
+          find extracted -maxdepth 3 -type f | head -100
+
+      - name: Locate Android project
+        shell: bash
+        run: |
+          set -e
+
+          SETTINGS_FILE="$(find extracted -type f \( -name 'settings.gradle.kts' -o -name 'settings.gradle' \) | head -n 1)"
+
+          if [ -z "$SETTINGS_FILE" ]; then
+            echo "ERRO: settings.gradle.kts ou settings.gradle nao encontrado."
+            exit 1
+          fi
+
+          ANDROID_DIR="$(dirname "$SETTINGS_FILE")"
+
+          echo "ANDROID_DIR=$ANDROID_DIR" >> "$GITHUB_ENV"
+
+          echo "Projeto Android encontrado em:"
+          echo "$ANDROID_DIR"
 
       - name: Set up JDK
         uses: actions/setup-java@v4
@@ -43,7 +77,7 @@ jobs:
           gradle-version: "9.6"
 
       - name: Build Debug APK
-        working-directory: extracted/AI-Running-Coach/android
+        working-directory: ${{ env.ANDROID_DIR }}
         run: |
           gradle :app:assembleDebug --no-daemon
 
@@ -51,5 +85,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AI-Running-Coach-debug-apk
-          path: extracted/AI-Running-Coach/android/app/build/outputs/apk/debug/*.apk
+          path: ${{ env.ANDROID_DIR }}/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
