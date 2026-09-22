@@ -17,6 +17,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
       - name: Find and extract AI Running Coach ZIP
         shell: bash
         run: |
@@ -58,18 +64,19 @@ jobs:
           echo "Projeto Android encontrado em:"
           echo "$ANDROID_DIR"
 
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK packages
+      - name: Configure Android SDK
+        shell: bash
         run: |
-          sdkmanager "platform-tools" "platforms;android-37" "build-tools;35.0.0"
+          set -e
+
+          echo "ANDROID_HOME=$ANDROID_HOME"
+
+          yes | sdkmanager --licenses > /dev/null || true
+
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -81,6 +88,12 @@ jobs:
         run: |
           gradle :app:assembleDebug --no-daemon
 
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI-Running-Coach-debug-apk
+          path: ${{ env.ANDROID_DIR }}/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
