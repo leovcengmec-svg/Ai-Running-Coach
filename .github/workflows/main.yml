@@ -72,38 +72,29 @@ jobs:
 
           if [ -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
             SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-          elif [ -x "$ANDROID_HOME/cmdline-tools/bin/sdkmanager" ]; then
-            SDKMANAGER="$ANDROID_HOME/cmdline-tools/bin/sdkmanager"
           else
             SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager 2>/dev/null | head -n 1)"
           fi
 
           if [ -z "$SDKMANAGER" ]; then
             echo "ERRO: sdkmanager nao encontrado."
-            echo "Conteudo do Android SDK:"
-            find "$ANDROID_HOME" -maxdepth 4 -type f -name sdkmanager 2>/dev/null || true
             exit 1
           fi
 
           echo "sdkmanager encontrado:"
           echo "$SDKMANAGER"
 
-          SDK_DIR="$(dirname "$(dirname "$(dirname "$SDKMANAGER")")")"
-
-          echo "$SDK_DIR/platform-tools" >> "$GITHUB_PATH"
-          echo "$(dirname "$SDKMANAGER")" >> "$GITHUB_PATH"
-
           yes | "$SDKMANAGER" --licenses > /dev/null || true
 
           "$SDKMANAGER" \
             "platform-tools" \
-            "platforms;android-35" \
-            "build-tools;35.0.0"
+            "platforms;android-37" \
+            "build-tools;36.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "9.6"
+          gradle-version: "9.6.0"
 
       - name: Build Debug APK
         working-directory: ${{ env.ANDROID_DIR }}
@@ -115,4 +106,4 @@ jobs:
         with:
           name: AI-Running-Coach-debug-apk
           path: ${{ env.ANDROID_DIR }}/app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
+          if-no-files-found: error 
