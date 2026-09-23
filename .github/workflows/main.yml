@@ -34,11 +34,12 @@ jobs:
           ZIP_FILE="$(find . -maxdepth 1 -type f -iname '*.zip' | head -n 1)"
 
           if [ -z "$ZIP_FILE" ]; then
-            echo "ERRO: nenhum arquivo ZIP foi encontrado."
+            echo "ERRO: nenhum arquivo ZIP foi encontrado na raiz."
             exit 1
           fi
 
-          echo "ZIP encontrado: $ZIP_FILE"
+          echo "ZIP encontrado:"
+          echo "$ZIP_FILE"
 
           unzip -q "$ZIP_FILE" -d extracted
 
@@ -58,7 +59,7 @@ jobs:
 
           echo "ANDROID_DIR=$ANDROID_DIR" >> "$GITHUB_ENV"
 
-          echo "Projeto Android:"
+          echo "Projeto Android encontrado em:"
           echo "$ANDROID_DIR"
 
       - name: Configure Android SDK
@@ -80,24 +81,19 @@ jobs:
 
           "$SDKMANAGER" \
             "platform-tools" \
-            "platforms;android-35" \
-            "build-tools;35.0.0"
+            "platforms;android-36" \
+            "build-tools;36.0.0"
 
-      - name: Prepare project for test build
+      - name: Verify Android SDK
         shell: bash
         run: |
           set -e
 
-          APP_GRADLE="$ANDROID_DIR/app/build.gradle.kts"
+          echo "Android SDK:"
+          ls "$ANDROID_HOME/platforms"
 
-          echo "Arquivo:"
-          echo "$APP_GRADLE"
-
-          sed -i 's/compileSdk = 37/compileSdk = 35/g' "$APP_GRADLE"
-          sed -i 's/targetSdk = 37/targetSdk = 35/g' "$APP_GRADLE"
-
-          echo "Configuracao final:"
-          grep -E 'compileSdk|targetSdk' "$APP_GRADLE"
+          echo "Build Tools:"
+          ls "$ANDROID_HOME/build-tools"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
